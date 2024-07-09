@@ -60,14 +60,16 @@ def query_arXiv(search_query='', categories=None, start_time=None, end_time=None
     }
 
     # Make the API request
+    # print('Contacting API')
     response = requests.get(f'http://export.arxiv.org/api/query?search_query={query}', params=params)
+    # print('Response status code - ', response.status_code)
     if response.status_code == 200:
         # Parse the XML response using feedparser
         feed = feedparser.parse(response.content)
         if len(feed.entries) == max_results and expand_search: # Recursive call if there are more than 100 papers in the timeframe
-            half_days = int((end_time-start_time).days/2)
-            articles1 = query_arXiv(categories=categories, start_time=start_time, end_time=end_time-td(days=half_days))
-            articles2 = query_arXiv(categories=categories, start_time=end_time-td(days=half_days), end_time=end_time)
+            half_time = (end_time-start_time)/2
+            articles1 = query_arXiv(categories=categories, start_time=start_time, end_time=end_time-half_time)
+            articles2 = query_arXiv(categories=categories, start_time=end_time-half_time, end_time=end_time)
             articles = pd.concat([articles1, articles2], ignore_index=True)
             return articles
         articles = pd.DataFrame(columns = ['id', 'arxiv_doi', 'title', 'published', 'authors', 'arxiv_primary_category',
@@ -95,3 +97,7 @@ def query_arXiv(search_query='', categories=None, start_time=None, end_time=None
     else:
         print('Error:', response.status_code)
         return []
+    
+if __name__ == '__main__':
+    articles = query_arXiv(search_query='radar',categories=['cs.AI', 'cs.CL'], start_time=dt.utcnow()-td(days=3))
+    print(len(articles))
